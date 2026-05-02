@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LinkGuard AI Pro</title>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --accent: #38bdf8; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; display: flex; justify-content: center; padding: 50px; }
+        .container { width: 100%; max-width: 600px; text-align: center; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 30px; }
+        input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; }
+        button { padding: 12px 24px; border-radius: 8px; border: none; background: var(--accent); font-weight: bold; cursor: pointer; }
+        .card { background: var(--card); padding: 25px; border-radius: 12px; display: none; text-align: left; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5); }
+        .badge { padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; margin-bottom: 10px; display: inline-block; }
+        .SAFE { background: #15803d; } .SUSPICIOUS { background: #a16207; } .DANGEROUS { background: #b91c1c; }
+        .loader { display: none; margin: 20px auto; border: 4px solid #334155; border-top: 4px solid var(--accent); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ LinkGuard <span style="color:var(--accent)">AI Pro</span></h1>
+        <p>Real-time phishing & malware detection</p>
+        <div class="input-group">
+            <input type="text" id="urlInput" placeholder="Paste link here (e.g., https://example.com)">
+            <button onclick="analyzeUrl()">Analyze</button>
+        </div>
+        <div id="loader" class="loader"></div>
+        <div id="resultCard" class="card">
+            <div id="statusBadge" class="badge">SAFE</div>
+            <h2 id="riskText" style="margin:5px 0">Risk: Low</h2>
+            <p id="reasonText" style="color:#94a3b8"></p>
+            <hr style="border:0; border-top:1px solid #334155; margin:15px 0">
+            <div id="stats" style="font-size:0.9rem; margin-bottom:15px"></div>
+            <strong>AI Insights:</strong>
+            <p id="aiExplanation" style="font-style:italic; font-size:0.95rem"></p>
+            <small id="sourceTag" style="color:var(--accent)"></small>
+        </div>
+    </div>
+
+    <script>
+async function analyzeUrl() {
+    const url = document.getElementById('urlInput').value;
+    if (!url) return alert("Enter URL");
+
+    const loader = document.getElementById('loader');
+    const card = document.getElementById('resultCard');
+
+    loader.style.display = 'block';
+    card.style.display = 'none';
+
+    try {
+        const res = await fetch('http://localhost:3000/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
+        });
+
+        const text = await res.text();
+
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch {
+            throw new Error("Invalid server response");
+        }
+
+        if (!res.ok) throw new Error(data.error || "Server error");
+
+        document.getElementById('statusBadge').innerText = data.status;
+        document.getElementById('statusBadge').className = `badge ${data.status}`;
+
+        document.getElementById('riskText').innerText = `Risk: ${data.risk}`;
+        document.getElementById('reasonText').innerText = data.reason;
+        document.getElementById('aiExplanation').innerText = data.explanation;
+        document.getElementById('sourceTag').innerText = data.source;
+
+        document.getElementById('stats').innerText =
+            `Malicious: ${data.details.malicious} | Suspicious: ${data.details.suspicious}`;
+
+        card.style.display = 'block';
+
+    } catch (e) {
+        alert("Error: " + e.message);
+    } finally {
+        loader.style.display = 'none';
+    }
+}
+</script>
+</body>
+</html>
