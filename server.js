@@ -4,6 +4,7 @@ const axios = require('axios');
 const NodeCache = require('node-cache');
 const rateLimit = require('express-rate-limit');
 const cors = require('cors');
+const path = require('path'); // ✅ added
 
 const app = express();
 const cache = new NodeCache({ stdTTL: 3600 });
@@ -11,6 +12,14 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+// ✅ STATIC FILES SERVE (IMPORTANT FIX)
+app.use(express.static("public"));
+
+// ✅ ROOT ROUTE FIX (Cannot GET / ka solution)
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
 app.use('/analyze', rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -33,7 +42,6 @@ app.post('/analyze', async (req, res) => {
             explanation: ""
         };
 
-        // 🔥 EXTRA INTELLIGENCE
         let domain = "";
         let isLogin = false;
         let isBrandSpoof = false;
@@ -105,7 +113,7 @@ app.post('/analyze', async (req, res) => {
             }
         }
 
-        // ================= 🔥 SMART AI =================
+        // ================= AI =================
         try {
             const aiRes = await axios.post(
                 "https://openrouter.ai/api/v1/chat/completions",
@@ -115,10 +123,7 @@ app.post('/analyze', async (req, res) => {
                         {
                             role: "user",
                             content: `
-You are a cybersecurity expert.
-
 Analyze this website:
-
 URL: ${url}
 Domain: ${domain}
 Status: ${result.status}
@@ -126,13 +131,7 @@ Risk: ${result.risk}
 Login Page: ${isLogin}
 Brand Spoof Risk: ${isBrandSpoof}
 
-Explain clearly:
-1. What type of website this is
-2. What data it may collect (login, payment etc.)
-3. Why it is safe or dangerous
-4. Final advice
-
-Keep it simple but detailed (4-5 lines).
+Explain simply (4-5 lines).
 `
                         }
                     ]
@@ -152,12 +151,11 @@ Keep it simple but detailed (4-5 lines).
         } catch (e) {
             console.log("AI error:", e.message);
 
-            // 🔥 SMART FALLBACK
             result.explanation = `
 This appears to be a ${isLogin ? "login-related" : "general"} website (${domain}).
 Risk level is ${result.risk}.
-${isBrandSpoof ? "The domain may be trying to mimic a known brand." : ""}
-Avoid entering sensitive information unless you trust the source.
+${isBrandSpoof ? "The domain may mimic a known brand." : ""}
+Avoid entering sensitive information unless trusted.
 `;
         }
 
@@ -171,5 +169,5 @@ Avoid entering sensitive information unless you trust the source.
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
 });
